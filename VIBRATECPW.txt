@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador Automático de Vibraciones</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .input-section, .graph-section, .comparison-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .input-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        label {
+            font-weight: bold;
+            min-width: 40px;
+        }
+        
+        input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex-grow: 1;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin-top: 15px;
+            width: 100%;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 350px;
+            margin-bottom: 25px;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-weight: bold;
+            color: #7f8c8d;
+        }
+        
+        .tab.active {
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .fault-signature {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .fault-image {
+            max-width: 100%;
+            height: auto;
+            margin: 15px 0;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        
+        select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        
+        .characteristics {
+            background-color: #f0f7ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+        
+        .characteristics li {
+            margin-bottom: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Analizador Automático de Vibraciones</h1>
+    
+    <div class="container">
+        <div class="input-section">
+            <h2>Ingresar Magnitudes</h2>
+            <p>Introduce las magnitudes (m/s²) para cada frecuencia predefinida:</p>
+            
+            <div class="input-grid" id="inputContainer">
+                <!-- Las entradas se generarán automáticamente con JavaScript -->
+            </div>
+            
+            <button onclick="processData()">Generar Análisis</button>
+        </div>
+        
+        <div class="graph-section">
+            <h2>Resultados Gráficos</h2>
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('x')">Eje X</button>
+                <button class="tab" onclick="showTab('y')">Eje Y</button>
+                <button class="tab" onclick="showTab('z')">Eje Z</button>
+            </div>
+            
+            <div id="x-tab" class="tab-content active">
+                <div class="chart-container">
+                    <canvas id="xChart"></canvas>
+                </div>
+            </div>
+            
+            <div id="y-tab" class="tab-content">
+                <div class="chart-container">
+                    <canvas id="yChart"></canvas>
+                </div>
+            </div>
+            
+            <div id="z-tab" class="tab-content">
+                <div class="chart-container">
+                    <canvas id="zChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="comparison-section">
+            <h2>Comparación con Firmas de Falla</h2>
+            
+            <select id="faultType" onchange="showFaultSignature()">
+                <option value="">Seleccione un tipo de falla para comparar</option>
+                <option value="desbalance">Desbalance</option>
+                <option value="desalineacion">Desalineación</option>
+                <option value="rodamiento">Falla en rodamiento</option>
+                <option value="holgura">Holgura mecánica</option>
+                <option value="resonancia">Resonancia</option>
+                <option value="excentricidad">Excentricidad</option>
+                <option value="desgaste">Desgaste general</option>
+            </select>
+            
+            <div id="faultSignature" class="fault-signature">
+                <p>Seleccione un tipo de falla para ver su firma característica y compararla con sus resultados.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Frecuencias predefinidas (Hz)
+        const PREDEFINED_FREQUENCIES = [30, 60, 90, 120, 180, 240, 300, 350, 410, 480];
+        let vibrationData = { x: [], y: [], z: [] };
+        let charts = { x: null, y: null, z: null };
+        
+        // Inicializar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            createInputFields();
+        });
+        
+        // Crear campos de entrada para cada frecuencia
+        function createInputFields() {
+            const container = document.getElementById('inputContainer');
+            container.innerHTML = '';
+            
+            PREDEFINED_FREQUENCIES.forEach((freq, index) => {
+                // Fila para eje X
+                container.appendChild(createFrequencyLabel(freq));
+                container.appendChild(createInputField('x', index));
+                
+                // Fila para eje Y
+                container.appendChild(createFrequencyLabel(freq));
+                container.appendChild(createInputField('y', index));
+                
+                // Fila para eje Z
+                container.appendChild(createFrequencyLabel(freq));
+                container.appendChild(createInputField('z', index));
+            });
+        }
+        
+        function createFrequencyLabel(freq) {
+            const label = document.createElement('label');
+            label.textContent = `${freq} Hz:`;
+            return label;
+        }
+        
+        function createInputField(axis, index) {
+            const group = document.createElement('div');
+            group.className = 'input-group';
+            
+            const axisLabel = document.createElement('span');
+            axisLabel.textContent = axis.toUpperCase();
+            axisLabel.style.fontWeight = 'bold';
+            axisLabel.style.minWidth = '20px';
+            
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.step = '0.01';
+            input.min = '0';
+            input.placeholder = 'Magnitud';
+            input.dataset.axis = axis;
+            input.dataset.index = index;
+            
+            group.appendChild(axisLabel);
+            group.appendChild(input);
+            return group;
+        }
+        
+        // Procesar datos ingresados
+        function processData() {
+            try {
+                // Obtener todos los campos de entrada
+                const inputs = document.querySelectorAll('input[data-axis]');
+                
+                // Inicializar datos
+                vibrationData = { x: [], y: [], z: [] };
+                
+                inputs.forEach(input => {
+                    const axis = input.dataset.axis;
+                    const index = parseInt(input.dataset.index);
+                    const value = parseFloat(input.value) || 0;
+                    const freq = PREDEFINED_FREQUENCIES[index];
+                    
+                    vibrationData[axis].push({
+                        freq: freq,
+                        mag: value
+                    });
+                });
+                
+                // Crear gráficos
+                createChart('x', vibrationData.x);
+                createChart('y', vibrationData.y);
+                createChart('z', vibrationData.z);
+                
+                // Mostrar primer tab
+                showTab('x');
+                
+                alert('Análisis generado correctamente');
+            } catch (error) {
+                alert('Error al procesar los datos: ' + error.message);
+                console.error(error);
+            }
+        }
+        
+        // Mostrar pestaña seleccionada
+        function showTab(axis) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(`${axis}-tab`).classList.add('active');
+            document.querySelector(`.tab[onclick="showTab('${axis}')"]`).classList.add('active');
+        }
+        
+        // Crear gráfico para un eje
+        function createChart(axis, data) {
+            const ctx = document.getElementById(`${axis}Chart`).getContext('2d');
+            
+            // Destruir gráfico anterior si existe
+            if (charts[axis]) {
+                charts[axis].destroy();
+            }
+            
+            // Ordenar datos por frecuencia
+            data.sort((a, b) => a.freq - b.freq);
+            
+            // Preparar datos para Chart.js
+            const labels = data.map(item => item.freq);
+            const magnitudes = data.map(item => item.mag);
+            
+            charts[axis] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Eje ${axis.toUpperCase()} (m/s²)`,
+                        data: magnitudes,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Magnitud (m/s²)',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Frecuencia (Hz)',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw.toFixed(2)} m/s²`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Mostrar firma de falla seleccionada
+        function showFaultSignature() {
+            const faultType = document.getElementById('faultType').value;
+            const faultDiv = document.getElementById('faultSignature');
+            
+            if (!faultType) {
+                faultDiv.innerHTML = '<p>Seleccione un tipo de falla para ver su firma característica y compararla con sus resultados.</p>';
+                return;
+            }
+            
+            // Base de datos de firmas de falla (simplificada)
+            const faultDatabase = {
+                desbalance: {
+                    title: "Desbalance",
+                    description: "Ocurre cuando el centro de masa no coincide con el centro de rotación.",
+                    image: "https://i.imgur.com/JQ6W0Rn.png",
+                    characteristics: [
+                        "Amplitud dominante a 1x RPM (frecuencia de rotación)",
+                        "La amplitud aumenta con el cuadrado de la velocidad",
+                        "Fase estable en mediciones radiales",
+                        "Similar amplitud en direcciones radiales"
+                    ],
+                    diagnostic: "Revise posibles masas excéntricas o acumulación de material desigual."
+                },
+                desalineacion: {
+                    title: "Desalineación",
+                    description: "Ocurre cuando los ejes de acoplamiento no están correctamente alineados.",
+                    image: "https://i.imgur.com/KL8mX9P.png",
+                    characteristics: [
+                        "Altos niveles en 2x RPM (predominante en desalineación angular)",
+                        "Componente axial significativo",
+                        "Puede presentar 1x y 3x también",
+                        "Fase diferencia ~0° o 180° entre mediciones radiales"
+                    ],
+                    diagnostic: "Verifique alineación de ejes y condición de acoplamientos."
+                },
+                rodamiento: {
+                    title: "Falla en Rodamiento",
+                    description: "Causada por daños en pistas, elementos rodantes o jaula del rodamiento.",
+                    image: "https://i.imgur.com/Vp5GtQz.png",
+                    characteristics: [
+                        "Picos en frecuencias características (BPFO, BPFI, BSF, FTF)",
+                        "Múltiples armónicos presentes",
+                        "Aumento de vibración en bandas de alta frecuencia",
+                        "Puede mostrar modulación de amplitud"
+                    ],
+                    diagnostic: "Identifique frecuencias características según modelo de rodamiento. Programe reemplazo."
+                },
+                holgura: {
+                    title: "Holgura Mecánica",
+                    description: "Resultado de componentes flojos o desgaste excesivo en ajustes.",
+                    image: "https://i.imgur.com/pvT3WnD.png",
+                    characteristics: [
+                        "Contenido de frecuencia amplio (ruido de fondo elevado)",
+                        "Múltiples armónicos de 1x RPM",
+                        "Puede mostrar subarmónicos (1/2x, 1/3x)",
+                        "Amplitud variable en mediciones repetidas"
+                    ],
+                    diagnostic: "Revise ajustes mecánicos, tornillos, bases y acoplamientos."
+                },
+                resonancia: {
+                    title: "Resonancia",
+                    description: "Ocurre cuando la frecuencia de excitación coincide con una frecuencia natural.",
+                    image: "https://i.imgur.com/qXwYtGf.png",
+                    characteristics: [
+                        "Pico agudo en frecuencia natural del sistema",
+                        "Amplitud sensible a cambios de velocidad",
+                        "Fase cambia ~180° al pasar por la resonancia",
+                        "Puede haber múltiples frecuencias resonantes"
+                    ],
+                    diagnostic: "Identifique fuente de excitación. Considere modificar rigidez o masa del sistema."
+                },
+                excentricidad: {
+                    title: "Excentricidad",
+                    description: "Causada por descentrado entre componentes rotativos y estáticos.",
+                    image: "https://i.imgur.com/mN3PJ5s.png",
+                    characteristics: [
+                        "Alta amplitud a 1x RPM",
+                        "Presencia significativa de 2x RPM",
+                        "Puede mostrar armónicos superiores",
+                        "Estable en el tiempo"
+                    ],
+                    diagnostic: "Verifique concentricidad entre componentes rotativos y estáticos."
+                },
+                desgaste: {
+                    title: "Desgaste General",
+                    description: "Resultado de deterioro progresivo de componentes mecánicos.",
+                    image: "https://i.imgur.com/9zLkQYF.png",
+                    characteristics: [
+                        "Aumento general de amplitudes en múltiples frecuencias",
+                        "Incremento de ruido de fondo",
+                        "Pérdida de definición en patrones espectrales",
+                        "Evolución gradual en el tiempo"
+                    ],
+                    diagnostic: "Evalúe condición general del equipo. Programe mantenimiento preventivo."
+                }
+            };
+            
+            const fault = faultDatabase[faultType];
+            let html = `
+                <h3>${fault.title}</h3>
+                <p><strong>Descripción:</strong> ${fault.description}</p>
+                <img src="${fault.image}" alt="Firma de ${fault.title}" class="fault-image">
+                
+                <div class="characteristics">
+                    <h4>Características de Vibración:</h4>
+                    <ul>
+            `;
+            
+            fault.characteristics.forEach(char => {
+                html += `<li>${char}</li>`;
+            });
+            
+            html += `
+                    </ul>
+                </div>
+                
+                <p><strong>Acción Recomendada:</strong> ${fault.diagnostic}</p>
+            `;
+            
+            faultDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
